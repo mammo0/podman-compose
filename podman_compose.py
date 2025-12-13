@@ -1471,7 +1471,7 @@ def flat_deps(services: dict[str, Any], with_extends: bool = False) -> None:
 
 
 class OverrideTag(yaml.YAMLObject):
-    yaml_dumper = yaml.Dumper
+    yaml_dumper = yaml.SafeDumper
     yaml_loader = yaml.SafeLoader
     yaml_tag = '!override'
 
@@ -1500,7 +1500,7 @@ class OverrideTag(yaml.YAMLObject):
 
 
 class ResetTag(yaml.YAMLObject):
-    yaml_dumper = yaml.Dumper
+    yaml_dumper = yaml.SafeDumper
     yaml_loader = yaml.SafeLoader
     yaml_tag = '!reset'
 
