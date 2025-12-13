@@ -28,11 +28,7 @@ import tempfile
 import urllib.parse
 from asyncio import Task
 from enum import Enum
-from typing import Any
-from typing import Callable
-from typing import Iterable
-from typing import Union
-from typing import overload
+from typing import Any, Callable, Iterable, Union, overload
 
 # import fnmatch
 # fnmatch.fnmatchcase(env, "*_HOST")
@@ -2073,6 +2069,30 @@ class PodmanCompose:
         if isinstance(retcode, int):
             sys.exit(retcode)
 
+    def original_configuration(self, configuration: dict[Any, Any]) -> dict[str, Any]:
+        """
+        Returns the original configuration without any overrides or resets.
+        This is used to get a stable representation of the configuration (can be converted to a JSON string).
+        """
+        return {
+            # recurse if the value is also a dictionary
+            key: self.original_configuration(value) if isinstance(value, dict) else value
+
+            # iterate over the configuration items
+            for key, value in configuration.items()
+            # filter
+            if (
+                # only string keys
+                isinstance(key, str)
+                # which do not start with an underscore
+                and not key.startswith("_")
+                # also exclude !override
+                and not isinstance(value, OverrideTag)
+                # and !reset tags
+                and not isinstance(value, ResetTag)
+            )
+        }
+
     def resolve_pod_name(self) -> str | None:
         # Priorities:
         # - Command line --in-pod
@@ -2301,12 +2321,12 @@ class PodmanCompose:
         if not getattr(args, "no_normalize", None):
             compose = normalize_final(compose, self.dirname)
         self.merged_yaml = yaml.safe_dump(compose)
-        merged_json_b = json.dumps(compose, separators=(",", ":")).encode("utf-8")
+        merged_json_b = json.dumps(self.original_configuration(compose), separators=(",", ":")).encode("utf-8")
         self.yaml_hash = hashlib.sha256(merged_json_b).hexdigest()
         compose["_dirname"] = dirname
         # debug mode
         if len(files) > 1:
-            log.debug(" ** merged:\n%s", json.dumps(compose, indent=2))
+            log.debug(" ** merged:\n%s", json.dumps(self.original_configuration(compose), indent=2))
         # ver = compose.get('version')
 
         self._parse_x_podman_settings(compose, self.environ)
